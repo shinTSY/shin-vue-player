@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="./css/index.css">
+  </head>
+
+  <body>
+    <div id="app">
+      <div class="left">
+        <input type="text" placeholder="请输入你要搜索的歌曲名" v-model="musicName" @keyup.enter="search">
+        <transition-group tag="ul" @after-enter="afterEnter">
+          <li v-for="(item, index) of musicList" :key="index" :style="'transition-delay:'+ index*0.1 + 's'" @dblclick="playMusic(item.id)">
+            {{item.name}} --- <span>{{item.artists[0].name}}</span>
+          </li>
+        </transition-group>
+      </div>
+      <div class="right">
+        <img :src="coverUrl" alt="" class="playing" :class="{pause: isPause}">
+        <audio @play="musicPlay" @pause="musicPause" controls autoplay :src="musicUrl">
+        </audio>
+
+        <transition-group tag="ul" @after-enter="afterEnter">
+          <li v-for="(item, index) of hotComments" :key="item.commentId" :style="'transition-delay:'+ index*0.1 + 's'">
+            <div class="comm-left">
+              <img :src="item.user.avatarUrl" alt="">
+            </div>
+            <div class="comm-right">
+              <p><span>{{item.user.nickname}}</span>: {{item.content}}</p>
+            </div>
+          </li>
+        </transition-group>
+      </div>
+    </div>
+  </body>
+  <script src="../lib/vue.js"></script>
+  <script src="../lib/vue-resource.min.js"></script>
+  <script>
+    let app = new Vue({
+      el: '#app',
+      data: {
+        musicList: [],
+        musicName: '',
+        coverUrl: '',
+        musicUrl: '',
+        hotComments: [],
+        isPause: true
+      },
+      methods: {
+        search() {
+          this.musicList = []
+          this.$http
+            .get(`https://autumnfish.cn/search?keywords=${this.musicName}`)
+            .then(response => {
+              this.musicList = response.body.result.songs
+            })
+        },
+        playMusic(id) {
+          this.$http
+            .get(`https://autumnfish.cn/song/url?id=${id}`)
+            .then(response => {
+              this.musicUrl = response.body.data[0].url
+              return this.$http.get(`https://autumnfish.cn/song/detail?ids=${id}`)
+            })
+            .then(res => {
+              this.coverUrl = res.body.songs[0].al.picUrl
+              return this.$http.get(`https://autumnfish.cn/comment/music?id=${id}&limit=5`)
+            })
+            .then(res => {
+              this.hotComments = res.body.hotComments
+            })
+        },
+        afterEnter(el) {
+          el.style.transitionDelay = ''
+        },
+        musicPlay() {
+          this.isPause = false
+        },
+        musicPause() {
+          this.isPause = true
+        }
+      }
+    })
+  </script>
+
+</html>
